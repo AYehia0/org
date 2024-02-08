@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/ayehia0/org/pkg/database/mongodb"
@@ -56,13 +57,13 @@ func (u *userController) SignupController(ctx *gin.Context) {
 
 	// bind the request
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(400, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResp(err))
 		return
 	}
 	// hashing the password
 	password, err := utils.GenerateHash(req.Password)
 	if err != nil {
-		ctx.JSON(500, gin.H{"error": "failed to hash the password"})
+		ctx.JSON(http.StatusInternalServerError, utils.ErrorResp(errors.New("failed to hash the password")))
 		return
 	}
 
@@ -74,12 +75,12 @@ func (u *userController) SignupController(ctx *gin.Context) {
 	})
 
 	if err != nil {
-		ctx.JSON(500, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusInternalServerError, utils.ErrorResp(err))
 		return
 	}
 
 	// for testing return the request
-	ctx.JSON(200, gin.H{"message": "User has been created successfully"})
+	ctx.JSON(http.StatusOK, gin.H{"message": "User has been created successfully"})
 }
 
 type LoginRequest struct {
@@ -92,7 +93,7 @@ func (u *userController) LoginController(ctx *gin.Context) {
 
 	// bind the request
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(400, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResp(err))
 		return
 	}
 
@@ -100,27 +101,27 @@ func (u *userController) LoginController(ctx *gin.Context) {
 	user, err := u.Store.UserRepository.FindByEmail(ctx, req.Email)
 
 	if err != nil {
-		ctx.JSON(500, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusInternalServerError, utils.ErrorResp(errors.New("failed to get the user")))
 		return
 	}
 
 	// compare the password
 	if err := utils.ComparePasswords(req.Password, user.Password); err != nil {
-		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials: passwords do not match"})
+		ctx.JSON(http.StatusUnauthorized, utils.ErrorResp(errors.New("invalid credentials")))
 		return
 	}
 
 	// create a access token
 	userAccessToken, payloadAccess, err := u.TokenCreator.Create(user.Email, u.AppConfig.TokenAccessExpiration)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create a token"})
+		ctx.JSON(http.StatusInternalServerError, utils.ErrorResp(errors.New("failed to create a token")))
 		return
 	}
 
 	// create a refresh token
 	userRefreshToken, payloadrefresh, err := u.TokenCreator.Create(user.Email, u.AppConfig.TokenRefreshExpiration)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create a token"})
+		ctx.JSON(http.StatusInternalServerError, utils.ErrorResp(errors.New("failed to create a token")))
 		return
 	}
 
@@ -134,7 +135,7 @@ func (u *userController) LoginController(ctx *gin.Context) {
 	})
 
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusInternalServerError, utils.ErrorResp(errors.New("failed to create a session")))
 		return
 	}
 
