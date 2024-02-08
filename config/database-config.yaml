@@ -1,0 +1,8 @@
+# The configs for the database
+# Mongodb is the default database
+type: mongodb
+host: db
+port: 27017
+database: organization
+username: root
+password: psps_Ilovecats
