@@ -1,5 +1,5 @@
 # The configs for the application
 port: 8080
-jwtSecret: cats_are_awesome
+jwtSecret: Il0v3Cats@Th3M3wIsS0Cute#Meow02!
 tokenAccessExpiration: 1h
 tokenRefreshExpiration: 24h
