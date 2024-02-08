@@ -25,6 +25,11 @@ type sessionRepository struct {
 	col *mongo.Collection
 }
 
+// create a new session repository
+func NewSessionRepository(col *mongo.Collection) SessionRepository {
+	return &sessionRepository{col: col}
+}
+
 // the function to create a new session
 func (r *sessionRepository) Create(ctx context.Context, session *models.Session) error {
 	_, err := r.col.InsertOne(ctx, session)

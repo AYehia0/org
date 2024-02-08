@@ -3,6 +3,8 @@ package handlers
 import (
 	"github.com/ayehia0/org/pkg/controllers"
 	"github.com/ayehia0/org/pkg/database/mongodb"
+	"github.com/ayehia0/org/pkg/token"
+	"github.com/ayehia0/org/pkg/utils"
 	"github.com/gin-gonic/gin"
 )
 
@@ -20,9 +22,9 @@ type userHandler struct {
 	userController controllers.UserController
 }
 
-func NewUserHandler(conn *mongodb.MongoDBConn) UserHandler {
+func NewUserHandler(conn *mongodb.MongoDBConn, token token.TokenCreator, appConfig *utils.AppConfig, store *mongodb.Store) UserHandler {
 	return &userHandler{
-		userController: controllers.NewUserController(conn),
+		userController: controllers.NewUserController(conn, token, appConfig, store),
 	}
 }
 

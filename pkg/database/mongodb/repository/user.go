@@ -16,21 +16,24 @@ type UserRepository interface {
 	FindByID(ctx context.Context, id string) (*models.User, error)       // Find a user by id
 }
 
+// create a new user repository
+func NewUserRepository(col *mongo.Collection) UserRepository {
+	return &userRepository{col: col}
+}
+
 // the user repository struct
 type userRepository struct {
-	// the database connection
 	col *mongo.Collection
 }
 
 // the function to create a new user
 func (r *userRepository) Create(ctx context.Context, user *models.User) error {
-	_, err := r.col.InsertOne(ctx, user)
-	if err != nil {
-		if mongo.IsDuplicateKeyError(err) {
-			return errors.New("user already exists")
-		}
-		return err
+	// make sure that the email is unique
+	_, err := r.FindByEmail(ctx, user.Email)
+	if err == nil {
+		return errors.New("email already exists")
 	}
+	_, err = r.col.InsertOne(ctx, user)
 	return err
 }
 

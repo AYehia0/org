@@ -16,13 +16,17 @@ type OrganizationRepository interface {
 	Update(ctx context.Context, org *models.Organization) (*models.Organization, error) // Update an organization returns the updated organization
 	Delete(ctx context.Context, id string) error                                        // Delete an organization
 	AddMember(ctx context.Context, orgID string, member *models.Member) error           // Add a member to an organization
-	RemoveMember(ctx context.Context, orgID string, memberID string) error              // Remove a member from an organization
 }
 
 // the organization repository struct
 type organizationRepository struct {
 	// the database connection
 	col *mongo.Collection
+}
+
+// create a new organization repository
+func NewOrganizationRepository(col *mongo.Collection) OrganizationRepository {
+	return &organizationRepository{col: col}
 }
 
 // the function to create a new organization

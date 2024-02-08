@@ -9,13 +9,21 @@ import (
 
 // setup the mongodb connection
 type MongoDBConn struct {
-	client *mongo.Client
+	Client   *mongo.Client
+	Database *mongo.Database
 }
 
 // the function to create a new mongodb connection
-func NewMongoDBConn(uri string) (*MongoDBConn, error) {
+func NewMongoDBConn(uri, databaseName, username, password string) (*MongoDBConn, error) {
+
+	// authenticate the connection
+	credentials := options.Credential{
+		Username: username,
+		Password: password,
+	}
+
 	// use the URI to connect to the database
-	client, err := mongo.Connect(context.Background(), options.Client().ApplyURI(uri))
+	client, err := mongo.Connect(context.Background(), options.Client().ApplyURI(uri).SetAuth(credentials))
 	if err != nil {
 		return nil, err
 	}
@@ -26,5 +34,8 @@ func NewMongoDBConn(uri string) (*MongoDBConn, error) {
 		return nil, err
 	}
 
-	return &MongoDBConn{client: client}, nil
+	// access the database
+	database := client.Database(databaseName)
+
+	return &MongoDBConn{Client: client, Database: database}, nil
 }

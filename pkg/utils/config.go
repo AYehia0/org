@@ -10,12 +10,12 @@ import (
 
 // contains the configs for the database in a yaml file:
 type DatabaseConfig struct {
-	Type     string `mapstructure:"type"`
-	Host     string `mapstructure:"host"`
-	Port     int    `mapstructure:"port"`
-	Database string `mapstructure:"database"`
-	Username string `mapstructure:"username"`
-	Password string `mapstructure:"password"`
+	Type     string `mapstructure:"type"`     // the type of the database
+	Host     string `mapstructure:"host"`     // the host for the database
+	Port     int    `mapstructure:"port"`     // the port for the database
+	Database string `mapstructure:"database"` // the name of the database
+	Username string `mapstructure:"username"` // the username for the database
+	Password string `mapstructure:"password"` // the password for the database
 }
 
 // the app config contains related configurations for the app
