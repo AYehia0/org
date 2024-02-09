@@ -3,8 +3,8 @@ package controllers
 import (
 	"net/http"
 
+	types "github.com/ayehia0/org/pkg/api"
 	api "github.com/ayehia0/org/pkg/api/middleware"
-	"github.com/ayehia0/org/pkg/database/mongodb"
 	"github.com/ayehia0/org/pkg/database/mongodb/models"
 	"github.com/ayehia0/org/pkg/token"
 	"github.com/ayehia0/org/pkg/utils"
@@ -20,28 +20,15 @@ type OrgController interface {
 	InviteUserToOrganizationController(ctx *gin.Context) // invite a user to an organization
 }
 
-type orgController struct {
-	MongoDBConn  *mongodb.MongoDBConn
-	Store        *mongodb.Store
-	TokenCreator token.TokenCreator
-	AppConfig    *utils.AppConfig
+type appO struct {
+	types.AppC
 }
 
-func NewOrgController(conn *mongodb.MongoDBConn, token token.TokenCreator, appConfig *utils.AppConfig, store *mongodb.Store) OrgController {
-	return &orgController{
-		MongoDBConn:  conn,
-		TokenCreator: token,
-		AppConfig:    appConfig,
-		Store:        store,
-	}
+func NewOrgController(appC *types.AppC) OrgController {
+	return &appO{AppC: *appC}
 }
 
-type CreateOrganizationRequest struct {
-	Name string `json:"name" binding:"required"`
-	Desc string `json:"description" binding:"required"`
-}
-
-func (o *orgController) CreateOrganizationController(ctx *gin.Context) {
+func (ao *appO) CreateOrganizationController(ctx *gin.Context) {
 	var req CreateOrganizationRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, utils.ErrorResp(err))
@@ -49,7 +36,7 @@ func (o *orgController) CreateOrganizationController(ctx *gin.Context) {
 	}
 
 	payload := ctx.MustGet(api.AuthPayloadKey).(*token.Payload)
-	id, err := o.Store.OrganizationRepository.Create(ctx, &models.Organization{
+	id, err := ao.Store.OrganizationRepository.Create(ctx, &models.Organization{
 		Name:    req.Name,
 		Desc:    req.Desc,
 		Members: []models.Member{},
@@ -67,9 +54,9 @@ func (o *orgController) CreateOrganizationController(ctx *gin.Context) {
 	})
 }
 
-func (o *orgController) DeleteOrganizationController(ctx *gin.Context) {
+func (ao *appO) DeleteOrganizationController(ctx *gin.Context) {
 	id := ctx.Param("id")
-	org, err := o.Store.OrganizationRepository.FindByID(ctx, id)
+	org, err := ao.Store.OrganizationRepository.FindByID(ctx, id)
 	if err != nil {
 		ctx.JSON(http.StatusNotFound, utils.ErrorResp(err))
 		return
@@ -83,7 +70,7 @@ func (o *orgController) DeleteOrganizationController(ctx *gin.Context) {
 		return
 	}
 
-	err = o.Store.OrganizationRepository.Delete(ctx, id)
+	err = ao.Store.OrganizationRepository.Delete(ctx, id)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, utils.ErrorResp(err))
 		return
@@ -94,12 +81,7 @@ func (o *orgController) DeleteOrganizationController(ctx *gin.Context) {
 	})
 }
 
-type UpdateOrganizationRequest struct {
-	Name string `json:"name"`
-	Desc string `json:"description"`
-}
-
-func (o *orgController) UpdateOrganizationController(ctx *gin.Context) {
+func (ao *appO) UpdateOrganizationController(ctx *gin.Context) {
 	// update an organization
 	var req UpdateOrganizationRequest
 
@@ -111,7 +93,7 @@ func (o *orgController) UpdateOrganizationController(ctx *gin.Context) {
 	// get the organization by id
 	id := ctx.Param("id")
 
-	org, err := o.Store.OrganizationRepository.Update(ctx, &models.Organization{
+	org, err := ao.Store.OrganizationRepository.Update(ctx, &models.Organization{
 		ID:   id,
 		Name: req.Name,
 		Desc: req.Desc,
@@ -130,8 +112,8 @@ func (o *orgController) UpdateOrganizationController(ctx *gin.Context) {
 }
 
 // TODO: don't return the the creator nor id
-func (o *orgController) GetAllOrganizationsController(ctx *gin.Context) {
-	orgs, err := o.Store.OrganizationRepository.FindAll(ctx)
+func (ao *appO) GetAllOrganizationsController(ctx *gin.Context) {
+	orgs, err := ao.Store.OrganizationRepository.FindAll(ctx)
 
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, utils.ErrorResp(err))
@@ -141,10 +123,10 @@ func (o *orgController) GetAllOrganizationsController(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, orgs)
 }
 
-func (o *orgController) GetOrganizationByIDController(ctx *gin.Context) {
+func (ao *appO) GetOrganizationByIDController(ctx *gin.Context) {
 	id := ctx.Param("id")
 
-	org, err := o.Store.OrganizationRepository.FindByID(ctx, id)
+	org, err := ao.Store.OrganizationRepository.FindByID(ctx, id)
 
 	if err != nil {
 		ctx.JSON(http.StatusNotFound, utils.ErrorResp(err))
@@ -159,11 +141,7 @@ func (o *orgController) GetOrganizationByIDController(ctx *gin.Context) {
 	})
 }
 
-type InviteUserToOrganizationRequest struct {
-	Email string `json:"user_email" binding:"required,email"`
-}
-
-func (o *orgController) InviteUserToOrganizationController(ctx *gin.Context) {
+func (ao *appO) InviteUserToOrganizationController(ctx *gin.Context) {
 	var req InviteUserToOrganizationRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, utils.ErrorResp(err))
@@ -172,14 +150,14 @@ func (o *orgController) InviteUserToOrganizationController(ctx *gin.Context) {
 
 	id := ctx.Param("id")
 
-	org, err := o.Store.UserRepository.FindByEmail(ctx, req.Email)
+	org, err := ao.Store.UserRepository.FindByEmail(ctx, req.Email)
 	if err != nil {
 		ctx.JSON(http.StatusNotFound, utils.ErrorResp(err))
 		return
 	}
 
 	// check if the user is already a member of the organization
-	isMember, err := o.Store.OrganizationRepository.IsUserInOrganization(ctx, id, req.Email)
+	isMember, err := ao.Store.OrganizationRepository.IsUserInOrganization(ctx, id, req.Email)
 
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, utils.ErrorResp(err))
@@ -200,7 +178,7 @@ func (o *orgController) InviteUserToOrganizationController(ctx *gin.Context) {
 		AccessLevel: "member", // you can change the access level
 	}
 
-	err = o.Store.OrganizationRepository.InviteUserToOrganization(ctx, id, member)
+	err = ao.Store.OrganizationRepository.InviteUserToOrganization(ctx, id, member)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, utils.ErrorResp(err))
 		return

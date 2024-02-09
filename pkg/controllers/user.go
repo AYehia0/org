@@ -6,9 +6,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/ayehia0/org/pkg/database/mongodb"
+	types "github.com/ayehia0/org/pkg/api"
 	"github.com/ayehia0/org/pkg/database/mongodb/models"
-	"github.com/ayehia0/org/pkg/token"
 	"github.com/ayehia0/org/pkg/utils"
 	"github.com/gin-gonic/gin"
 )
@@ -25,28 +24,12 @@ type UserController interface {
 	RefreshTokenController(ctx *gin.Context)
 }
 
-// the user controller should have access to the database
-type userController struct {
-	// the controller should have a reference to the database
-	MongoDBConn *mongodb.MongoDBConn
-
-	// contains all the repositories
-	Store *mongodb.Store
-
-	// the token creator used to create and verify the tokens
-	TokenCreator token.TokenCreator
-
-	// TODO: Change this : there is a better way
-	AppConfig *utils.AppConfig
+type appU struct {
+	types.AppC
 }
 
-func NewUserController(conn *mongodb.MongoDBConn, token token.TokenCreator, appConfig *utils.AppConfig, store *mongodb.Store) UserController {
-	return &userController{
-		MongoDBConn:  conn,
-		TokenCreator: token,
-		AppConfig:    appConfig,
-		Store:        store,
-	}
+func NewUserController(appC *types.AppC) UserController {
+	return &appU{AppC: *appC}
 }
 
 type SignupRequest struct {
@@ -56,7 +39,7 @@ type SignupRequest struct {
 }
 
 // the controllers should return a gin.HandlerFunc
-func (u *userController) SignupController(ctx *gin.Context) {
+func (au *appU) SignupController(ctx *gin.Context) {
 	// call the controller to handle the request
 	var req SignupRequest
 
@@ -73,7 +56,7 @@ func (u *userController) SignupController(ctx *gin.Context) {
 	}
 
 	// save the user to the database
-	err = u.Store.UserRepository.Create(ctx, &models.User{
+	err = au.Store.UserRepository.Create(ctx, &models.User{
 		Name:     req.Name,
 		Email:    req.Email,
 		Password: password,
@@ -93,7 +76,7 @@ type LoginRequest struct {
 	Password string `json:"password" binding:"required"`
 }
 
-func (u *userController) LoginController(ctx *gin.Context) {
+func (au *appU) LoginController(ctx *gin.Context) {
 	var req LoginRequest
 
 	// bind the request
@@ -103,7 +86,7 @@ func (u *userController) LoginController(ctx *gin.Context) {
 	}
 
 	// get the user from the Database
-	user, err := u.Store.UserRepository.FindByEmail(ctx, req.Email)
+	user, err := au.Store.UserRepository.FindByEmail(ctx, req.Email)
 
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, utils.ErrorResp(errors.New("failed to get the user")))
@@ -117,21 +100,21 @@ func (u *userController) LoginController(ctx *gin.Context) {
 	}
 
 	// create a access token
-	userAccessToken, payloadAccess, err := u.TokenCreator.Create(user.ID, u.AppConfig.TokenAccessExpiration)
+	userAccessToken, payloadAccess, err := au.TokenCreator.Create(user.ID, au.AppConfig.TokenAccessExpiration)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, utils.ErrorResp(errors.New("failed to create a token")))
 		return
 	}
 
 	// create a refresh token
-	userRefreshToken, payloadrefresh, err := u.TokenCreator.Create(user.ID, u.AppConfig.TokenRefreshExpiration)
+	userRefreshToken, payloadrefresh, err := au.TokenCreator.Create(user.ID, au.AppConfig.TokenRefreshExpiration)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, utils.ErrorResp(errors.New("failed to create a token")))
 		return
 	}
 
 	// create the session to the database
-	err = u.Store.SessionRepository.Create(ctx, &models.Session{
+	err = au.Store.SessionRepository.Create(ctx, &models.Session{
 		ID:                  payloadrefresh.Id.String(),
 		UserID:              user.ID,
 		AccessToken:         userAccessToken,
@@ -156,7 +139,7 @@ type RefreshTokenRequest struct {
 	RefreshToken string `json:"refresh_token" binding:"required"`
 }
 
-func (u *userController) RefreshTokenController(ctx *gin.Context) {
+func (au *appU) RefreshTokenController(ctx *gin.Context) {
 	var req RefreshTokenRequest
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -165,14 +148,14 @@ func (u *userController) RefreshTokenController(ctx *gin.Context) {
 	}
 
 	// verify the refresh token
-	payload, err := u.TokenCreator.Verify(req.RefreshToken)
+	payload, err := au.TokenCreator.Verify(req.RefreshToken)
 	if err != nil {
 		ctx.JSON(http.StatusUnauthorized, utils.ErrorResp(errors.New("invalid token")))
 		return
 	}
 
 	// get the session from the database
-	session, err := u.Store.SessionRepository.FindByID(ctx, payload.Id.String())
+	session, err := au.Store.SessionRepository.FindByID(ctx, payload.Id.String())
 
 	if err != nil {
 		ctx.JSON(http.StatusNotFound, utils.ErrorResp(err))
@@ -192,7 +175,7 @@ func (u *userController) RefreshTokenController(ctx *gin.Context) {
 	}
 
 	// create a new access token
-	token, payload, err := u.TokenCreator.Create(session.UserID, u.AppConfig.TokenAccessExpiration)
+	token, payload, err := au.TokenCreator.Create(session.UserID, au.AppConfig.TokenAccessExpiration)
 
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, utils.ErrorResp(errors.New("failed to create a token")))

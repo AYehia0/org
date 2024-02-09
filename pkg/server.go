@@ -3,6 +3,7 @@ package pkg
 import (
 	"fmt"
 
+	types "github.com/ayehia0/org/pkg/api"
 	"github.com/ayehia0/org/pkg/api/handlers"
 	api "github.com/ayehia0/org/pkg/api/middleware"
 	"github.com/ayehia0/org/pkg/api/routes"
@@ -57,8 +58,15 @@ func (s *Server) Init() error {
 		return err
 	}
 
-	userHandler := handlers.NewUserHandler(s.MongoDBConn, tokenCreator, s.AppConfig, s.Store)
-	orgHandler := handlers.NewOrgHandler(s.MongoDBConn, tokenCreator, s.AppConfig, s.Store)
+	appC := &types.AppC{
+		MongoDBConn:  s.MongoDBConn,
+		Store:        s.Store,
+		TokenCreator: tokenCreator,
+		AppConfig:    s.AppConfig,
+	}
+
+	orgHandler := handlers.NewOrgHandler(appC)
+	userHandler := handlers.NewUserHandler(appC)
 
 	routes.SetupUserRoutes(s.Router.Group("/"), userHandler)
 
