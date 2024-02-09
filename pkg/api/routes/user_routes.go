@@ -7,10 +7,7 @@ import (
 
 // here we define all the routes for user business logic
 func SetupUserRoutes(router *gin.RouterGroup, userHandler handlers.UserHandler) {
-
-	// signup route
 	router.POST("/signup", userHandler.SignupHandler)
-
-	// login route
 	router.POST("/login", userHandler.LoginHandler)
+	router.POST("/refresh-token", userHandler.RefreshTokenHandler)
 }

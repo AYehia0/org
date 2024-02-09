@@ -10,11 +10,9 @@ import (
 
 // here we define all the handlers for user business logic like signup, login, etc.
 type UserHandler interface {
-	// the user can signup
 	SignupHandler(ctx *gin.Context)
-
-	// the user can login
 	LoginHandler(ctx *gin.Context)
+	RefreshTokenHandler(ctx *gin.Context)
 }
 
 type userHandler struct {
@@ -35,4 +33,8 @@ func (u *userHandler) SignupHandler(ctx *gin.Context) {
 
 func (u *userHandler) LoginHandler(ctx *gin.Context) {
 	u.userController.LoginController(ctx)
+}
+
+func (u *userHandler) RefreshTokenHandler(ctx *gin.Context) {
+	u.userController.RefreshTokenController(ctx)
 }

@@ -32,8 +32,8 @@ func NewPasteoToken(secretKey string) (TokenCreator, error) {
 	return creator, nil
 }
 
-func (p *PasteoCreator) Create(username string, duration time.Duration) (string, *Payload, error) {
-	payload, err := NewPayload(username, duration)
+func (p *PasteoCreator) Create(userId string, duration time.Duration) (string, *Payload, error) {
+	payload, err := NewPayload(userId, duration)
 	if err != nil {
 		return "", payload, err
 	}

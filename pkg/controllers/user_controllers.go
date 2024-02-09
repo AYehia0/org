@@ -2,7 +2,9 @@ package controllers
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/ayehia0/org/pkg/database/mongodb"
 	"github.com/ayehia0/org/pkg/database/mongodb/models"
@@ -18,6 +20,9 @@ type UserController interface {
 
 	// the user can login
 	LoginController(ctx *gin.Context)
+
+	// refresh token
+	RefreshTokenController(ctx *gin.Context)
 }
 
 // the user controller should have access to the database
@@ -112,14 +117,14 @@ func (u *userController) LoginController(ctx *gin.Context) {
 	}
 
 	// create a access token
-	userAccessToken, payloadAccess, err := u.TokenCreator.Create(user.Email, u.AppConfig.TokenAccessExpiration)
+	userAccessToken, payloadAccess, err := u.TokenCreator.Create(user.ID, u.AppConfig.TokenAccessExpiration)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, utils.ErrorResp(errors.New("failed to create a token")))
 		return
 	}
 
 	// create a refresh token
-	userRefreshToken, payloadrefresh, err := u.TokenCreator.Create(user.Email, u.AppConfig.TokenRefreshExpiration)
+	userRefreshToken, payloadrefresh, err := u.TokenCreator.Create(user.ID, u.AppConfig.TokenRefreshExpiration)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, utils.ErrorResp(errors.New("failed to create a token")))
 		return
@@ -127,6 +132,7 @@ func (u *userController) LoginController(ctx *gin.Context) {
 
 	// create the session to the database
 	err = u.Store.SessionRepository.Create(ctx, &models.Session{
+		ID:                  payloadrefresh.Id.String(),
 		UserID:              user.ID,
 		AccessToken:         userAccessToken,
 		RefreshToken:        userRefreshToken,
@@ -143,5 +149,59 @@ func (u *userController) LoginController(ctx *gin.Context) {
 		"message":       "User has been logged in successfully",
 		"access_token":  userAccessToken,
 		"refresh_token": userRefreshToken,
+	})
+}
+
+type RefreshTokenRequest struct {
+	RefreshToken string `json:"refresh_token" binding:"required"`
+}
+
+func (u *userController) RefreshTokenController(ctx *gin.Context) {
+	var req RefreshTokenRequest
+
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResp(err))
+		return
+	}
+
+	// verify the refresh token
+	payload, err := u.TokenCreator.Verify(req.RefreshToken)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, utils.ErrorResp(errors.New("invalid token")))
+		return
+	}
+
+	// get the session from the database
+	session, err := u.Store.SessionRepository.FindByID(ctx, payload.Id.String())
+
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, utils.ErrorResp(err))
+		return
+	}
+
+	// some checks
+	if session.UserID != payload.UserId {
+		ctx.JSON(http.StatusUnauthorized, utils.ErrorResp(errors.New("Session does not belong to the user")))
+		return
+	}
+
+	// hmm, is that right ?
+	if time.Now().After(session.RefreshTokenExpires) {
+		err = fmt.Errorf("Session has been expired before!")
+		ctx.JSON(http.StatusInternalServerError, utils.ErrorResp(err))
+	}
+
+	// create a new access token
+	token, payload, err := u.TokenCreator.Create(session.UserID, u.AppConfig.TokenAccessExpiration)
+
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, utils.ErrorResp(errors.New("failed to create a token")))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"message":       "Token has been refreshed successfully",
+		"access_token":  token,
+		"refresh_token": session.RefreshToken,
 	})
 }

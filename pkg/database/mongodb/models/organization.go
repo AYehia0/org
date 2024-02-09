@@ -12,6 +12,7 @@ type Member struct {
 type Organization struct {
 	ID      string   `json:"id" bson:"_id,omitempty"`
 	Name    string   `json:"name" bson:"name"`
-	Desc    string   `json:"desc" bson:"desc"`
+	Desc    string   `json:"description" bson:"desc"`
+	Creator string   `json:"creator" bson:"creator"`
 	Members []Member `json:"members" bson:"members"`
 }

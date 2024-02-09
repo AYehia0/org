@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/ayehia0/org/pkg/api/handlers"
+	api "github.com/ayehia0/org/pkg/api/middleware"
 	"github.com/ayehia0/org/pkg/api/routes"
 	"github.com/ayehia0/org/pkg/database/mongodb"
 	"github.com/ayehia0/org/pkg/token"
@@ -56,10 +57,16 @@ func (s *Server) Init() error {
 		return err
 	}
 
-	// setup user routes
 	userHandler := handlers.NewUserHandler(s.MongoDBConn, tokenCreator, s.AppConfig, s.Store)
+	orgHandler := handlers.NewOrgHandler(s.MongoDBConn, tokenCreator, s.AppConfig, s.Store)
 
 	routes.SetupUserRoutes(s.Router.Group("/"), userHandler)
+
+	// use authMiddleware to protect the routes
+	authRquired := s.Router.Group("/organizations")
+	authRquired.Use(api.AuthMiddleware(tokenCreator))
+
+	routes.SetupOrgRoutes(authRquired, orgHandler)
 
 	// the api
 	return nil

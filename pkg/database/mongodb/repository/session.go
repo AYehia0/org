@@ -40,6 +40,7 @@ func (r *sessionRepository) Create(ctx context.Context, session *models.Session)
 }
 
 // the function to find a session by id
+// TODO: change this to use the object id as key instead of string
 func (r *sessionRepository) FindByID(ctx context.Context, id string) (*models.Session, error) {
 	var session models.Session
 	err := r.col.FindOne(ctx, bson.M{"_id": id}).Decode(&session)
