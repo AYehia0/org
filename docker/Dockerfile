@@ -15,4 +15,4 @@ COPY --from=build /app/*.sh /app/
 EXPOSE 8080
 
 CMD ["/app/main"]
-ENTRYPOINT ["/app/startup.sh"]
+ENTRYPOINT ["/app/run.sh"]
