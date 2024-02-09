@@ -86,6 +86,8 @@ func (s *Server) Run() error {
 	// check if the server is running on production or development
 	if s.AppConfig.Env == "production" {
 		// run a ssl server using the certs issued by letsencrypt which is found on : /etc/letsencrypt/live/<domain-name>/{fullchain.pem, privkey.pem}
+		// disable debug mode
+		gin.SetMode(gin.ReleaseMode)
 		return s.Router.RunTLS(fmt.Sprintf("0.0.0.0:%d", s.AppConfig.Port),
 			"./fullchain.pem",
 			"./privkey.pem",
