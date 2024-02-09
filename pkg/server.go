@@ -87,8 +87,8 @@ func (s *Server) Run() error {
 	if s.AppConfig.Env == "production" {
 		// run a ssl server using the certs issued by letsencrypt which is found on : /etc/letsencrypt/live/<domain-name>/{fullchain.pem, privkey.pem}
 		return s.Router.RunTLS(fmt.Sprintf("0.0.0.0:%d", s.AppConfig.Port),
-			fmt.Sprintf("/etc/letsencrypt/live/%s/fullchain.pem", s.AppConfig.DomainName),
-			fmt.Sprintf("/etc/letsencrypt/live/%s/privkey.pem", s.AppConfig.DomainName),
+			"./fullchain.pem",
+			"./privkey.pem",
 		)
 	} else {
 		fmt.Printf("Server running on port %d\n", s.AppConfig.Port)
