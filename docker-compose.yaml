@@ -10,8 +10,6 @@ services:
       dockerfile: ./docker/Dockerfile
     ports:
       - "8080:443"
-    volumes:
-      - ./:/app
     depends_on:
       - db
   db:
