@@ -1,5 +1,7 @@
 # The configs for the application
-port: 8080
+port: 443
 jwtSecret: Il0v3Cats@Th3M3wIsS0Cute#Meow02!
 tokenAccessExpiration: 1h
 tokenRefreshExpiration: 24h
+env: production
+domain: org.ayehia0.info

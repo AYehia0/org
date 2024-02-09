@@ -21,6 +21,8 @@ type DatabaseConfig struct {
 // the app config contains related configurations for the app
 type AppConfig struct {
 	Port                   int           `mapstructure:"port"`
+	Env                    string        `mapstructure:"env"`
+	DomainName             string        `mapstructure:"domain"`
 	JwtSecret              string        `mapstructure:"jwtSecret"`
 	TokenAccessExpiration  time.Duration `mapstructure:"tokenAccessExpiration"`
 	TokenRefreshExpiration time.Duration `mapstructure:"tokenRefreshExpiration"`

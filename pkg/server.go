@@ -82,6 +82,16 @@ func (s *Server) Init() error {
 
 func (s *Server) Run() error {
 	// run the server
-	fmt.Printf("Server running on port %d\n", s.AppConfig.Port)
-	return s.Router.Run(fmt.Sprintf("0.0.0.0:%d", s.AppConfig.Port))
+
+	// check if the server is running on production or development
+	if s.AppConfig.Env == "production" {
+		// run a ssl server using the certs issued by letsencrypt which is found on : /etc/letsencrypt/live/<domain-name>/{fullchain.pem, privkey.pem}
+		return s.Router.RunTLS(fmt.Sprintf("0.0.0.0:%d", s.AppConfig.Port),
+			fmt.Sprintf("/etc/letsencrypt/live/%s/fullchain.pem", s.AppConfig.DomainName),
+			fmt.Sprintf("/etc/letsencrypt/live/%s/privkey.pem", s.AppConfig.DomainName),
+		)
+	} else {
+		fmt.Printf("Server running on port %d\n", s.AppConfig.Port)
+		return s.Router.Run(fmt.Sprintf("0.0.0.0:%d", s.AppConfig.Port))
+	}
 }
