@@ -6,7 +6,7 @@ import (
 )
 
 // here we define all the routes for user business logic
-func SetupOrgRoutes(router *gin.RouterGroup, orgHandler handlers.OrganizationHandler) {
+func SetupOrgRoutes(router *gin.RouterGroup, orgHandler *handlers.OrgHandler) {
 	router.POST("/", orgHandler.CreateOrganizationHandler)
 	router.POST("/:id/invite", orgHandler.InviteUserToOrganizationHandler)
 	router.DELETE("/:id", orgHandler.DeleteOrganizationHandler)
