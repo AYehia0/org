@@ -8,6 +8,7 @@ import (
 	api "github.com/ayehia0/org/pkg/api/middleware"
 	"github.com/ayehia0/org/pkg/api/routes"
 	"github.com/ayehia0/org/pkg/database/mongodb"
+	"github.com/ayehia0/org/pkg/database/redis"
 	"github.com/ayehia0/org/pkg/token"
 	"github.com/ayehia0/org/pkg/utils"
 	"github.com/gin-gonic/gin"
@@ -15,11 +16,13 @@ import (
 
 type Server struct {
 	MongoDBConn *mongodb.MongoDBConn
+	RedisConn   *redis.RedisConn
 	DBConfig    *utils.DatabaseConfig
 	AppConfig   *utils.AppConfig
 	RedisConfig *utils.RedisConfig
 	Router      *gin.Engine
-	Store       *mongodb.Store
+	DBStore     *mongodb.DBStore
+	RedisStore  *redis.RedisStore
 }
 
 func NewServer() *Server {
@@ -40,18 +43,24 @@ func (s *Server) Init() error {
 
 	// connect to the database
 	uri := fmt.Sprintf("mongodb://%s:%d", s.DBConfig.Host, s.DBConfig.Port)
-	conn, err := mongodb.NewMongoDBConn(uri, s.DBConfig.Database, s.DBConfig.Username, s.DBConfig.Password)
+	dbConn, err := mongodb.NewMongoDBConn(uri, s.DBConfig.Database, s.DBConfig.Username, s.DBConfig.Password)
 	if err != nil {
 		return err
 	}
 
-	s.MongoDBConn = conn
+	// connect to the redis
+	redisDb := 0 // the default db
+	redisConn, err := redis.NewRedisConn(s.RedisConfig.Host, s.RedisConfig.Port, s.RedisConfig.Password, redisDb)
+
+	s.MongoDBConn = dbConn
+	s.RedisConn = redisConn
 
 	// setup the engine
 	s.Router = gin.Default()
 
 	// defining the repositories
-	s.Store = mongodb.NewStore(s.MongoDBConn)
+	s.DBStore = mongodb.NewStore(s.MongoDBConn)
+	s.RedisStore = redis.NewStore(s.RedisConn)
 
 	// create a token creator
 	tokenCreator, err := token.NewPasteoToken(s.AppConfig.JwtSecret)
@@ -62,7 +71,8 @@ func (s *Server) Init() error {
 
 	appC := &types.AppC{
 		MongoDBConn:  s.MongoDBConn,
-		Store:        s.Store,
+		DBStore:      s.DBStore,
+		RDBStore:     s.RedisStore,
 		TokenCreator: tokenCreator,
 		AppConfig:    s.AppConfig,
 	}

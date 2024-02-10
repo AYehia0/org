@@ -50,7 +50,7 @@ func (au *appU) SignupController(ctx *gin.Context) {
 	}
 
 	// save the user to the database
-	err = au.Store.UserRepository.Create(ctx, &models.User{
+	err = au.DBStore.UserRepository.Create(ctx, &models.User{
 		Name:     req.Name,
 		Email:    req.Email,
 		Password: password,
@@ -75,7 +75,7 @@ func (au *appU) LoginController(ctx *gin.Context) {
 	}
 
 	// get the user from the Database
-	user, err := au.Store.UserRepository.FindByEmail(ctx, req.Email)
+	user, err := au.DBStore.UserRepository.FindByEmail(ctx, req.Email)
 
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, utils.ErrorResp(errors.New("failed to get the user")))
@@ -103,7 +103,7 @@ func (au *appU) LoginController(ctx *gin.Context) {
 	}
 
 	// create the session to the database
-	err = au.Store.SessionRepository.Create(ctx, &models.Session{
+	err = au.DBStore.SessionRepository.Create(ctx, &models.Session{
 		ID:                  payloadrefresh.Id.String(),
 		UserID:              user.ID,
 		AccessToken:         userAccessToken,
@@ -140,7 +140,7 @@ func (au *appU) RefreshTokenController(ctx *gin.Context) {
 	}
 
 	// get the session from the database
-	session, err := au.Store.SessionRepository.FindByID(ctx, payload.Id.String())
+	session, err := au.DBStore.SessionRepository.FindByID(ctx, payload.Id.String())
 
 	if err != nil {
 		ctx.JSON(http.StatusNotFound, utils.ErrorResp(err))
