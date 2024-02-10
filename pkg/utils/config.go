@@ -20,8 +20,8 @@ type DatabaseConfig struct {
 
 // the app config contains related configurations for the app
 type AppConfig struct {
-	Port                   int           `mapstructure:"port"`
-	Env                    string        `mapstructure:"env"`
+	Port                   int           `mapstructure:"aport" env:"APORT"`
+	Env                    string        `mapstructure:"env" env:"ENV"`
 	JwtSecret              string        `mapstructure:"jwtSecret"`
 	TokenAccessExpiration  time.Duration `mapstructure:"tokenAccessExpiration"`
 	TokenRefreshExpiration time.Duration `mapstructure:"tokenRefreshExpiration"`
@@ -31,6 +31,10 @@ type AppConfig struct {
 func readConfigFile(path, name string) error {
 	viper.SetConfigName(name)
 	viper.AddConfigPath(path)
+
+	// override from environment variables
+	viper.AutomaticEnv()
+
 	return viper.ReadInConfig()
 }
 

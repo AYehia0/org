@@ -1,5 +1,5 @@
 # The configs for the application
-port: 443
+aport: 443
 jwtSecret: Il0v3Cats@Th3M3wIsS0Cute#Meow02!
 tokenAccessExpiration: 1h
 tokenRefreshExpiration: 24h

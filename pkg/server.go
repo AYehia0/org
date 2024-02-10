@@ -17,6 +17,7 @@ type Server struct {
 	MongoDBConn *mongodb.MongoDBConn
 	DBConfig    *utils.DatabaseConfig
 	AppConfig   *utils.AppConfig
+	RedisConfig *utils.RedisConfig
 	Router      *gin.Engine
 	Store       *mongodb.Store
 }
@@ -27,7 +28,7 @@ func NewServer() *Server {
 
 func (s *Server) Init() error {
 	// the configs
-	dbConfig, appConfig, err := utils.ConfigStore("./config", "database-config", "app-config")
+	dbConfig, redisConfig, appConfig, err := utils.ConfigStore("./config", "database-config", "redis-config", "app-config")
 
 	if err != nil {
 		return err
@@ -35,6 +36,7 @@ func (s *Server) Init() error {
 
 	s.DBConfig = &dbConfig
 	s.AppConfig = &appConfig
+	s.RedisConfig = &redisConfig
 
 	// connect to the database
 	uri := fmt.Sprintf("mongodb://%s:%d", s.DBConfig.Host, s.DBConfig.Port)
@@ -93,7 +95,6 @@ func (s *Server) Run() error {
 			"./privkey.pem",
 		)
 	} else {
-		fmt.Printf("Server running on port %d\n", s.AppConfig.Port)
 		return s.Router.Run(fmt.Sprintf("0.0.0.0:%d", s.AppConfig.Port))
 	}
 }
