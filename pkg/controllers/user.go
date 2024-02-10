@@ -32,12 +32,6 @@ func NewUserController(appC *types.AppC) UserController {
 	return &appU{AppC: *appC}
 }
 
-type SignupRequest struct {
-	Name     string `json:"name" binding:"required"`
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required"`
-}
-
 // the controllers should return a gin.HandlerFunc
 func (au *appU) SignupController(ctx *gin.Context) {
 	// call the controller to handle the request
@@ -69,11 +63,6 @@ func (au *appU) SignupController(ctx *gin.Context) {
 
 	// for testing return the request
 	ctx.JSON(http.StatusOK, gin.H{"message": "User has been created successfully"})
-}
-
-type LoginRequest struct {
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required"`
 }
 
 func (au *appU) LoginController(ctx *gin.Context) {
@@ -133,10 +122,6 @@ func (au *appU) LoginController(ctx *gin.Context) {
 		"access_token":  userAccessToken,
 		"refresh_token": userRefreshToken,
 	})
-}
-
-type RefreshTokenRequest struct {
-	RefreshToken string `json:"refresh_token" binding:"required"`
 }
 
 func (au *appU) RefreshTokenController(ctx *gin.Context) {
