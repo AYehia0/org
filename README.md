@@ -5,7 +5,9 @@ This repository houses a Golang-based API application designed for managing orga
 ## Setup
 
 To run the application locally, you need to have docker installed on your machine and make (if you don't have make check the Makefile for `compose-build`)
-- `make compose-build`
+- `make compose-build` then `make compose-up`
+
+The application uses `Dockerfile` in production while it uses `Dockerfile.dev` in development. as in development I have hot reload enabled! which is missing in the production.
 
 ## Documentation
 
@@ -20,9 +22,18 @@ Check out the postman documentations [here](https://documenter.getpostman.com/vi
 
 ![](./.assests/mongo-express.png)
 
-## Project Structure
+- I highly recommend using postman to try the API, make sure to use the `Org production` Env.
 
-The project structure is designed to assist you in getting started quickly. You can modify it as needed for your specific requirements.
+![](./.assests/postman_env.png)
+
+- I am saving the session in the database and also in redis memeory, I know that we can drop mongodb session saving but for consistancy and compatibility I decided to keep everything
+- The application sturcture and code is very scalable, you can see there are many unused things but I kept for the furture!
+- Revoking the refresh token doesn't expire the current access token, so current access token will keep working!
+- The production server is very limited: 1gb ram and 1 CPU core, so keep that in mind!
+- The way I use and store configs really annoys me, I prefer using `.env` to also be able to using as vars in `docker-compose.yaml`
+- Talking about the configs, I know I left the secrets exposed on propose (I never do that in production or even in any project) coz the propose of the application is to be delivered in 4 days!
+
+## Project Structure
 
 - **cmd/**: Contains the main application file.
   - **main.go**: The entry point of the application.
@@ -56,5 +67,9 @@ The project structure is designed to assist you in getting started quickly. You 
 - **.gitignore**: Specifies files and directories to be ignored by Git.
 
 ## Todo
-- [ ] Add production branch
-- [ ] Refactor code
+- [X] Add production branch
+- [X] Refactor code
+- [ ] Speed up production build process it takes like 120s to build!
+- [ ] More refactoring :D
+- [ ] Centeralize the configs in the docker-compose with the ones in `config/` + remove the secrets from production
+- [ ] Add tests
