@@ -8,6 +8,7 @@ import (
 	api "github.com/ayehia0/org/pkg/api/middleware"
 	"github.com/ayehia0/org/pkg/api/routes"
 	"github.com/ayehia0/org/pkg/database/mongodb"
+	"github.com/ayehia0/org/pkg/database/redis"
 	"github.com/ayehia0/org/pkg/token"
 	"github.com/ayehia0/org/pkg/utils"
 	"github.com/gin-gonic/gin"
@@ -15,10 +16,13 @@ import (
 
 type Server struct {
 	MongoDBConn *mongodb.MongoDBConn
+	RedisConn   *redis.RedisConn
 	DBConfig    *utils.DatabaseConfig
 	AppConfig   *utils.AppConfig
+	RedisConfig *utils.RedisConfig
 	Router      *gin.Engine
-	Store       *mongodb.Store
+	DBStore     *mongodb.DBStore
+	RedisStore  *redis.RedisStore
 }
 
 func NewServer() *Server {
@@ -27,7 +31,7 @@ func NewServer() *Server {
 
 func (s *Server) Init() error {
 	// the configs
-	dbConfig, appConfig, err := utils.ConfigStore("./config", "database-config", "app-config")
+	dbConfig, redisConfig, appConfig, err := utils.ConfigStore("./config", "database-config", "redis-config", "app-config")
 
 	if err != nil {
 		return err
@@ -35,21 +39,28 @@ func (s *Server) Init() error {
 
 	s.DBConfig = &dbConfig
 	s.AppConfig = &appConfig
+	s.RedisConfig = &redisConfig
 
 	// connect to the database
 	uri := fmt.Sprintf("mongodb://%s:%d", s.DBConfig.Host, s.DBConfig.Port)
-	conn, err := mongodb.NewMongoDBConn(uri, s.DBConfig.Database, s.DBConfig.Username, s.DBConfig.Password)
+	dbConn, err := mongodb.NewMongoDBConn(uri, s.DBConfig.Database, s.DBConfig.Username, s.DBConfig.Password)
 	if err != nil {
 		return err
 	}
 
-	s.MongoDBConn = conn
+	// connect to the redis
+	redisDb := 0 // the default db
+	redisConn, err := redis.NewRedisConn(s.RedisConfig.Host, s.RedisConfig.Port, s.RedisConfig.Password, redisDb)
+
+	s.MongoDBConn = dbConn
+	s.RedisConn = redisConn
 
 	// setup the engine
 	s.Router = gin.Default()
 
 	// defining the repositories
-	s.Store = mongodb.NewStore(s.MongoDBConn)
+	s.DBStore = mongodb.NewStore(s.MongoDBConn)
+	s.RedisStore = redis.NewStore(s.RedisConn)
 
 	// create a token creator
 	tokenCreator, err := token.NewPasteoToken(s.AppConfig.JwtSecret)
@@ -60,7 +71,8 @@ func (s *Server) Init() error {
 
 	appC := &types.AppC{
 		MongoDBConn:  s.MongoDBConn,
-		Store:        s.Store,
+		DBStore:      s.DBStore,
+		RDBStore:     s.RedisStore,
 		TokenCreator: tokenCreator,
 		AppConfig:    s.AppConfig,
 	}
@@ -82,6 +94,17 @@ func (s *Server) Init() error {
 
 func (s *Server) Run() error {
 	// run the server
-	fmt.Printf("Server running on port %d\n", s.AppConfig.Port)
-	return s.Router.Run(fmt.Sprintf("0.0.0.0:%d", s.AppConfig.Port))
+
+	// check if the server is running on production or development
+	if s.AppConfig.Env == "production" {
+		// run a ssl server using the certs issued by letsencrypt which is found on : /etc/letsencrypt/live/<domain-name>/{fullchain.pem, privkey.pem}
+		// disable debug mode
+		gin.SetMode(gin.ReleaseMode)
+		return s.Router.RunTLS(fmt.Sprintf("0.0.0.0:%d", s.AppConfig.Port),
+			"./fullchain.pem",
+			"./privkey.pem",
+		)
+	} else {
+		return s.Router.Run(fmt.Sprintf("0.0.0.0:%d", s.AppConfig.Port))
+	}
 }

@@ -20,16 +20,28 @@ type DatabaseConfig struct {
 
 // the app config contains related configurations for the app
 type AppConfig struct {
-	Port                   int           `mapstructure:"port"`
+	Port                   int           `mapstructure:"aport" env:"APORT"`
+	Env                    string        `mapstructure:"env" env:"ENV"`
 	JwtSecret              string        `mapstructure:"jwtSecret"`
 	TokenAccessExpiration  time.Duration `mapstructure:"tokenAccessExpiration"`
 	TokenRefreshExpiration time.Duration `mapstructure:"tokenRefreshExpiration"`
+}
+
+// the redis config contains related configurations for the redis
+type RedisConfig struct {
+	Host     string `mapstructure:"host"`
+	Port     int    `mapstructure:"port"`
+	Password string `mapstructure:"password"`
 }
 
 // a helper function that takes the name, path and struct
 func readConfigFile(path, name string) error {
 	viper.SetConfigName(name)
 	viper.AddConfigPath(path)
+
+	// override from environment variables
+	viper.AutomaticEnv()
+
 	return viper.ReadInConfig()
 }
 
@@ -38,23 +50,31 @@ func unmarshalConfig(config interface{}) error {
 }
 
 // read and parse the configurations from the yaml file from the path given
-func ConfigStore(path, database, app string) (DatabaseConfig, AppConfig, error) {
+func ConfigStore(path, database, redis, app string) (DatabaseConfig, RedisConfig, AppConfig, error) {
 	var dbConfig DatabaseConfig
 	var appConfig AppConfig
+	var redisConfig RedisConfig
 
 	if err := readConfigFile(path, database); err != nil {
-		return dbConfig, appConfig, err
+		return dbConfig, redisConfig, appConfig, err
 	}
 	if err := unmarshalConfig(&dbConfig); err != nil {
-		return dbConfig, appConfig, err
+		return dbConfig, redisConfig, appConfig, err
+	}
+
+	if err := readConfigFile(path, redis); err != nil {
+		return dbConfig, redisConfig, appConfig, err
+	}
+	if err := unmarshalConfig(&redisConfig); err != nil {
+		return dbConfig, redisConfig, appConfig, err
 	}
 
 	if err := readConfigFile(path, app); err != nil {
-		return dbConfig, appConfig, err
+		return dbConfig, redisConfig, appConfig, err
 	}
 	if err := unmarshalConfig(&appConfig); err != nil {
-		return dbConfig, appConfig, err
+		return dbConfig, redisConfig, appConfig, err
 	}
 
-	return dbConfig, appConfig, nil
+	return dbConfig, redisConfig, appConfig, nil
 }

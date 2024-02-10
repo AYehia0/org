@@ -11,8 +11,8 @@ WORKDIR /app
 COPY --from=build /app/main /app/main
 COPY --from=build /app/config /app/config
 COPY --from=build /app/*.sh /app/
-
-EXPOSE 8080
+COPY --from=build /app/fullchain.pem /app/
+COPY --from=build /app/privkey.pem /app/
 
 CMD ["/app/main"]
-ENTRYPOINT ["/app/startup.sh"]
+ENTRYPOINT ["/app/run.sh"]

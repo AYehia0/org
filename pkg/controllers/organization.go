@@ -36,7 +36,7 @@ func (ao *appO) CreateOrganizationController(ctx *gin.Context) {
 	}
 
 	payload := ctx.MustGet(api.AuthPayloadKey).(*token.Payload)
-	id, err := ao.Store.OrganizationRepository.Create(ctx, &models.Organization{
+	id, err := ao.DBStore.OrganizationRepository.Create(ctx, &models.Organization{
 		Name:    req.Name,
 		Desc:    req.Desc,
 		Members: []models.Member{},
@@ -56,7 +56,7 @@ func (ao *appO) CreateOrganizationController(ctx *gin.Context) {
 
 func (ao *appO) DeleteOrganizationController(ctx *gin.Context) {
 	id := ctx.Param("id")
-	org, err := ao.Store.OrganizationRepository.FindByID(ctx, id)
+	org, err := ao.DBStore.OrganizationRepository.FindByID(ctx, id)
 	if err != nil {
 		ctx.JSON(http.StatusNotFound, utils.ErrorResp(err))
 		return
@@ -70,7 +70,7 @@ func (ao *appO) DeleteOrganizationController(ctx *gin.Context) {
 		return
 	}
 
-	err = ao.Store.OrganizationRepository.Delete(ctx, id)
+	err = ao.DBStore.OrganizationRepository.Delete(ctx, id)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, utils.ErrorResp(err))
 		return
@@ -93,7 +93,7 @@ func (ao *appO) UpdateOrganizationController(ctx *gin.Context) {
 	// get the organization by id
 	id := ctx.Param("id")
 
-	org, err := ao.Store.OrganizationRepository.Update(ctx, &models.Organization{
+	org, err := ao.DBStore.OrganizationRepository.Update(ctx, &models.Organization{
 		ID:   id,
 		Name: req.Name,
 		Desc: req.Desc,
@@ -113,7 +113,7 @@ func (ao *appO) UpdateOrganizationController(ctx *gin.Context) {
 
 // TODO: don't return the the creator nor id
 func (ao *appO) GetAllOrganizationsController(ctx *gin.Context) {
-	orgs, err := ao.Store.OrganizationRepository.FindAll(ctx)
+	orgs, err := ao.DBStore.OrganizationRepository.FindAll(ctx)
 
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, utils.ErrorResp(err))
@@ -126,7 +126,7 @@ func (ao *appO) GetAllOrganizationsController(ctx *gin.Context) {
 func (ao *appO) GetOrganizationByIDController(ctx *gin.Context) {
 	id := ctx.Param("id")
 
-	org, err := ao.Store.OrganizationRepository.FindByID(ctx, id)
+	org, err := ao.DBStore.OrganizationRepository.FindByID(ctx, id)
 
 	if err != nil {
 		ctx.JSON(http.StatusNotFound, utils.ErrorResp(err))
@@ -150,14 +150,14 @@ func (ao *appO) InviteUserToOrganizationController(ctx *gin.Context) {
 
 	id := ctx.Param("id")
 
-	org, err := ao.Store.UserRepository.FindByEmail(ctx, req.Email)
+	org, err := ao.DBStore.UserRepository.FindByEmail(ctx, req.Email)
 	if err != nil {
 		ctx.JSON(http.StatusNotFound, utils.ErrorResp(err))
 		return
 	}
 
 	// check if the user is already a member of the organization
-	isMember, err := ao.Store.OrganizationRepository.IsUserInOrganization(ctx, id, req.Email)
+	isMember, err := ao.DBStore.OrganizationRepository.IsUserInOrganization(ctx, id, req.Email)
 
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, utils.ErrorResp(err))
@@ -178,7 +178,7 @@ func (ao *appO) InviteUserToOrganizationController(ctx *gin.Context) {
 		AccessLevel: "member", // you can change the access level
 	}
 
-	err = ao.Store.OrganizationRepository.InviteUserToOrganization(ctx, id, member)
+	err = ao.DBStore.OrganizationRepository.InviteUserToOrganization(ctx, id, member)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, utils.ErrorResp(err))
 		return
