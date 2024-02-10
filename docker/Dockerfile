@@ -14,7 +14,5 @@ COPY --from=build /app/*.sh /app/
 COPY --from=build /app/fullchain.pem /app/
 COPY --from=build /app/privkey.pem /app/
 
-EXPOSE 8080
-
 CMD ["/app/main"]
 ENTRYPOINT ["/app/run.sh"]
