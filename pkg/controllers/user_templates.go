@@ -14,3 +14,13 @@ type LoginRequest struct {
 type RefreshTokenRequest struct {
 	RefreshToken string `json:"refresh_token" binding:"required"`
 }
+
+type RefreshTokenResponse struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+	Message      string `json:"message"`
+}
+
+type RevokeRefreshTokenRequest struct {
+	RefreshToken string `json:"refresh_token" binding:"required"`
+}

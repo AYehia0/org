@@ -33,7 +33,7 @@ func (r *sessionRepository) CreateSession(ctx context.Context, session *models.S
 	}
 
 	// add the session to the redis database
-	err = r.conn.Set(ctx, session.ID, sessionJSON, session.RefreshTokenExpires.Sub(time.Now())).Err()
+	err = r.conn.Set(ctx, session.RefreshToken, sessionJSON, session.RefreshTokenExpires.Sub(time.Now())).Err()
 	if err != nil {
 		return err
 	}

@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -22,6 +21,9 @@ type UserController interface {
 
 	// refresh token
 	RefreshTokenController(ctx *gin.Context)
+
+	// revoke refresh token
+	RevokeRefreshTokenController(ctx *gin.Context)
 }
 
 type appU struct {
@@ -102,26 +104,29 @@ func (au *appU) LoginController(ctx *gin.Context) {
 		return
 	}
 
-	// create the session to the database
-	err = au.DBStore.SessionRepository.Create(ctx, &models.Session{
+	// Save the session to the database
+	session := &models.Session{
 		ID:                  payloadrefresh.Id.String(),
 		UserID:              user.ID,
 		AccessToken:         userAccessToken,
 		RefreshToken:        userRefreshToken,
 		AccessTokenExpires:  payloadAccess.ExpiredAt,
 		RefreshTokenExpires: payloadrefresh.ExpiredAt,
-	})
-
+	}
+	err = au.DBStore.SessionRepository.Create(ctx, session)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, utils.ErrorResp(errors.New("failed to create a session")))
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{
-		"message":       "User has been logged in successfully",
-		"access_token":  userAccessToken,
-		"refresh_token": userRefreshToken,
-	})
+	// Also save the refresh token to the redis database
+	err = au.RDBStore.SessionRepository.CreateSession(ctx, session)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, utils.ErrorResp(errors.New("failed to save session to the redis")))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, returnRefreshTokenResponse(session.RefreshToken, userAccessToken))
 }
 
 func (au *appU) RefreshTokenController(ctx *gin.Context) {
@@ -139,37 +144,90 @@ func (au *appU) RefreshTokenController(ctx *gin.Context) {
 		return
 	}
 
-	// get the session from the database
-	session, err := au.DBStore.SessionRepository.FindByID(ctx, payload.Id.String())
-
+	// check if the token is valid in the redis database first
+	sessionInRedis, err := au.RDBStore.SessionRepository.GetSessionByID(ctx, req.RefreshToken)
 	if err != nil {
 		ctx.JSON(http.StatusNotFound, utils.ErrorResp(err))
 		return
 	}
 
-	// some checks
-	if session.UserID != payload.UserId {
-		ctx.JSON(http.StatusUnauthorized, utils.ErrorResp(errors.New("Session does not belong to the user")))
+	// if the token is found
+	if sessionInRedis != nil {
+		err = isSessionValid(sessionInRedis)
+		if err != nil {
+			ctx.JSON(http.StatusUnauthorized, utils.ErrorResp(err))
+			return
+		}
+
+		// create a new access token
+		token, _, err := au.TokenCreator.Create(sessionInRedis.ID, au.AppConfig.TokenAccessExpiration)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, utils.ErrorResp(errors.New("failed to create a token")))
+			return
+		}
+		ctx.JSON(http.StatusOK, returnRefreshTokenResponse(sessionInRedis.RefreshToken, token))
 		return
 	}
 
-	// hmm, is that right ?
-	if time.Now().After(session.RefreshTokenExpires) {
-		err = fmt.Errorf("Session has been expired before!")
-		ctx.JSON(http.StatusInternalServerError, utils.ErrorResp(err))
+	// get the session from the database
+	session, err := au.DBStore.SessionRepository.FindByID(ctx, payload.Id.String())
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, utils.ErrorResp(err))
+		return
 	}
 
+	err = isSessionValid(session)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, utils.ErrorResp(err))
+		return
+	}
 	// create a new access token
-	token, payload, err := au.TokenCreator.Create(session.UserID, au.AppConfig.TokenAccessExpiration)
-
+	token, payload, err := au.TokenCreator.Create(session.ID, au.AppConfig.TokenAccessExpiration)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, utils.ErrorResp(errors.New("failed to create a token")))
 		return
 	}
+	ctx.JSON(http.StatusOK, returnRefreshTokenResponse(session.RefreshToken, token))
+}
 
-	ctx.JSON(http.StatusOK, gin.H{
-		"message":       "Token has been refreshed successfully",
-		"access_token":  token,
-		"refresh_token": session.RefreshToken,
-	})
+func (au *appU) RevokeRefreshTokenController(ctx *gin.Context) {
+	var req RevokeRefreshTokenRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.ErrorResp(err))
+		return
+	}
+
+	// delete the refresh token from the redis database
+	err := au.RDBStore.SessionRepository.DeleteSession(ctx, req.RefreshToken)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, utils.ErrorResp(err))
+		return
+	}
+
+	// this is optional to delete the token from the database or now
+	// TODO: delete the session record from the database
+
+	ctx.JSON(http.StatusOK, gin.H{"message": "Token has been revoked successfully"})
+}
+
+// helper function to check if the session is valid
+func isSessionValid(session *models.Session) error {
+	// if the user isn't the owner of the session
+	if session.UserID != session.UserID {
+		return errors.New("Session does not belong to the user")
+	}
+
+	if time.Now().After(session.RefreshTokenExpires) {
+		return errors.New("Session has been expired before!")
+	}
+
+	return nil
+}
+
+func returnRefreshTokenResponse(refreshToken, accessToken string) RefreshTokenResponse {
+	return RefreshTokenResponse{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+		Message:      "Token has been refreshed successfully",
+	}
 }

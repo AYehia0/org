@@ -27,3 +27,7 @@ func (u *UserHandler) LoginHandler(ctx *gin.Context) {
 func (u *UserHandler) RefreshTokenHandler(ctx *gin.Context) {
 	u.userController.RefreshTokenController(ctx)
 }
+
+func (u *UserHandler) RevokeRefreshTokenHandler(ctx *gin.Context) {
+	u.userController.RevokeRefreshTokenController(ctx)
+}
